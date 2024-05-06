@@ -1,7 +1,10 @@
 use iced::event::{self, Event};
-use iced::widget::{button, center, checkbox, text, Column};
+use iced::widget::{
+    button, center, checkbox, container, list, scrollable, text, Column,
+    Scrollable,
+};
 use iced::window;
-use iced::{Center, Element, Fill, Subscription, Task};
+use iced::{Center, Element, Fill, Font, Subscription, Task};
 
 pub fn main() -> iced::Result {
     iced::application("Events - Iced", Events::update, Events::view)
@@ -12,7 +15,7 @@ pub fn main() -> iced::Result {
 
 #[derive(Debug, Default)]
 struct Events {
-    last: Vec<Event>,
+    log: list::Content<Event>,
     enabled: bool,
 }
 
@@ -27,10 +30,10 @@ impl Events {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::EventOccurred(event) if self.enabled => {
-                self.last.push(event);
+                self.log.push(event);
 
-                if self.last.len() > 5 {
-                    let _ = self.last.remove(0);
+                if self.log.len() > 1_000 {
+                    self.log.remove(0);
                 }
 
                 Task::none()
@@ -56,12 +59,20 @@ impl Events {
     }
 
     fn view(&self) -> Element<Message> {
-        let events = Column::with_children(
-            self.last
-                .iter()
-                .map(|event| text!("{event:?}").size(40))
-                .map(Element::from),
-        );
+        let events = container(
+            scrollable(
+                container(list(&self.log, |_i, event| {
+                    text!("{event:?}")
+                        .size(14)
+                        .font(Font::MONOSPACE)
+                        .into()
+                }))
+                .padding(10),
+            )
+            .height(Fill),
+        )
+        .style(container::rounded_box)
+        .padding(5);
 
         let toggle = checkbox("Listen to runtime events", self.enabled)
             .on_toggle(Message::Toggled);
@@ -78,6 +89,6 @@ impl Events {
             .push(toggle)
             .push(exit);
 
-        center(content).into()
+        center(content).padding(10).into()
     }
 }
