@@ -61,12 +61,12 @@ impl Events {
     fn view(&self) -> Element<Message> {
         let events = container(
             scrollable(
-                container(list(&self.log, |_i, event| {
-                    text!("{event:?}")
-                        .size(14)
-                        .font(Font::MONOSPACE)
-                        .into()
-                }))
+                container(
+                    list(&self.log, |_i, event| {
+                        text!("{event:?}").size(14).font(Font::MONOSPACE).into()
+                    })
+                    .spacing(10),
+                )
                 .padding(10),
             )
             .height(Fill),
