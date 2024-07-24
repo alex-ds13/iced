@@ -384,7 +384,7 @@ where
             })
             .fold(event::Status::Ignored, event::Status::merge);
 
-        if let Event::Window(_, window::Event::RedrawRequested(_)) = event {
+        if let Event::Window(window::Event::RedrawRequested(_)) = event {
             match &mut state.task {
                 Task::Idle => {}
                 Task::Computing { .. } => {
@@ -584,7 +584,7 @@ where
         tree: &mut Tree,
         layout: Layout<'_>,
         renderer: &Renderer,
-        operation: &mut dyn widget::Operation<Message>,
+        operation: &mut dyn widget::Operation<()>,
     ) {
         let state = tree.state.downcast_mut::<State>();
         let offset = layout.position() - Point::ORIGIN;
