@@ -1,7 +1,6 @@
 use iced::event::{self, Event};
 use iced::widget::{
     button, center, checkbox, container, list, scrollable, text, Column,
-    Scrollable,
 };
 use iced::window;
 use iced::{Center, Element, Fill, Font, Subscription, Task};
