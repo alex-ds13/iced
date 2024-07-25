@@ -2,10 +2,10 @@ use iced::widget::{
     button, center, column, container, horizontal_space, list, row, scrollable,
     text,
 };
-use iced::{Alignment, Element, Length, Theme};
+use iced::{Center, Element, Fill, Theme};
 
 pub fn main() -> iced::Result {
-    iced::program("List - Iced", List::update, List::view)
+    iced::application("List - Iced", List::update, List::view)
         .theme(|_| Theme::TokyoNight)
         .run()
 }
@@ -63,12 +63,12 @@ impl List {
                     ]
                     .spacing(10)
                     .padding(5)
-                    .align_items(Alignment::Center)
+                    .align_y(Center)
                     .into()
                 }))
                 .padding(10),
             )
-            .width(Length::Fill),
+            .width(Fill),
         )
         .padding(10)
         .into()
