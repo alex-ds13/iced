@@ -52,6 +52,7 @@ where
         window: Arc<winit::window::Window>,
         program: &program::Instance<P>,
         compositor: &mut C,
+        renderer_settings: renderer::Settings,
         exit_on_close_request: bool,
         system_theme: theme::Mode,
     ) -> &mut Window<P, C> {
@@ -60,7 +61,7 @@ where
         let surface_version = state.surface_version();
         let surface =
             compositor.create_surface(window.clone(), surface_size.width, surface_size.height);
-        let renderer = compositor.create_renderer();
+        let renderer = compositor.create_renderer(renderer_settings);
 
         let _ = self.aliases.insert(window.id(), id);
 
@@ -183,10 +184,6 @@ where
                 x: position.x,
                 y: position.y,
             })
-    }
-
-    pub fn logical_size(&self) -> Size {
-        self.state.logical_size()
     }
 
     pub fn request_redraw(&mut self, redraw_request: RedrawRequest) {
@@ -377,6 +374,7 @@ where
                 align_y: alignment::Vertical::Top,
                 shaping: text::Shaping::Advanced,
                 wrapping: text::Wrapping::None,
+                ellipsis: text::Ellipsis::None,
                 hint_factor: renderer.scale_factor(),
             });
 

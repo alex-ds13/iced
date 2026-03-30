@@ -1,10 +1,9 @@
 //! Compose existing renderers and create type-safe fallback strategies.
+use crate::core::font;
 use crate::core::image;
 use crate::core::renderer;
 use crate::core::svg;
-use crate::core::{
-    self, Background, Color, Font, Image, Pixels, Point, Rectangle, Size, Svg, Transformation,
-};
+use crate::core::{self, Background, Color, Image, Point, Rectangle, Size, Svg, Transformation};
 use crate::graphics::compositor;
 use crate::graphics::mesh;
 use crate::graphics::text;
@@ -253,7 +252,7 @@ where
     type Surface = Surface<A::Surface, B::Surface>;
 
     async fn with_backend(
-        settings: graphics::Settings,
+        settings: compositor::Settings,
         display: impl compositor::Display + Clone,
         compatible_window: impl compositor::Window + Clone,
         shell: Shell,
@@ -317,10 +316,12 @@ where
         Err(graphics::Error::List(errors))
     }
 
-    fn create_renderer(&self) -> Self::Renderer {
+    fn create_renderer(&self, settings: renderer::Settings) -> Self::Renderer {
         match self {
-            Self::Primary(compositor) => Renderer::Primary(compositor.create_renderer()),
-            Self::Secondary(compositor) => Renderer::Secondary(compositor.create_renderer()),
+            Self::Primary(compositor) => Renderer::Primary(compositor.create_renderer(settings)),
+            Self::Secondary(compositor) => {
+                Renderer::Secondary(compositor.create_renderer(settings))
+            }
         }
     }
 
@@ -352,8 +353,12 @@ where
         }
     }
 
-    fn load_font(&mut self, font: Cow<'static, [u8]>) {
-        delegate!(self, compositor, compositor.load_font(font));
+    fn load_font(&mut self, font: Cow<'static, [u8]>) -> Result<(), font::Error> {
+        delegate!(self, compositor, compositor.load_font(font))
+    }
+
+    fn list_fonts(&mut self) -> Result<Vec<font::Family>, font::Error> {
+        delegate!(self, compositor, compositor.list_fonts())
     }
 
     fn information(&self) -> compositor::Information {
@@ -624,18 +629,12 @@ where
     A: renderer::Headless,
     B: renderer::Headless,
 {
-    async fn new(
-        default_font: Font,
-        default_text_size: Pixels,
-        backend: Option<&str>,
-    ) -> Option<Self> {
-        if let Some(renderer) = A::new(default_font, default_text_size, backend).await {
+    async fn new(settings: renderer::Settings, backend: Option<&str>) -> Option<Self> {
+        if let Some(renderer) = A::new(settings, backend).await {
             return Some(Self::Primary(renderer));
         }
 
-        B::new(default_font, default_text_size, backend)
-            .await
-            .map(Self::Secondary)
+        B::new(settings, backend).await.map(Self::Secondary)
     }
 
     fn name(&self) -> String {

@@ -5,8 +5,8 @@ use iced::widget::{
 };
 use iced::window;
 use iced::{
-    Application, Center, Element, Fill, Font, Function, Preset, Program, Subscription,
-    Task as Command, Theme,
+    Application, Center, Element, Fill, Function, Preset, Program, Subscription, Task as Command,
+    Theme,
 };
 
 use serde::{Deserialize, Serialize};
@@ -334,7 +334,7 @@ impl Task {
                     .on_toggle(TaskMessage::Completed)
                     .width(Fill)
                     .size(17)
-                    .text_shaping(text::Shaping::Advanced);
+                    .shaping(text::Shaping::Advanced);
 
                 row![
                     checkbox,
@@ -440,7 +440,7 @@ fn empty_message(message: &str) -> Element<'_, Message> {
 
 fn icon(unicode: char) -> Text<'static> {
     text(unicode.to_string())
-        .font(Font::with_name("Iced-Todos-Icons"))
+        .font("Iced-Todos-Icons")
         .width(20)
         .align_x(Center)
         .shaping(text::Shaping::Basic)
@@ -456,7 +456,7 @@ fn delete_icon() -> Text<'static> {
 
 fn subtle(theme: &Theme) -> text::Style {
     text::Style {
-        color: Some(theme.extended_palette().background.strongest.color),
+        color: Some(theme.palette().background.strongest.color),
     }
 }
 

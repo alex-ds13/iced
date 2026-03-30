@@ -1,8 +1,11 @@
 //! A compositor is responsible for initializing a renderer and managing window
 //! surfaces.
+use crate::core;
 use crate::core::Color;
+use crate::core::font;
+use crate::core::renderer;
 use crate::futures::{MaybeSend, MaybeSync};
-use crate::{Error, Settings, Shell, Viewport};
+use crate::{Antialiasing, Error, Shell, Viewport};
 
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use thiserror::Error;
@@ -40,7 +43,7 @@ pub trait Compositor: Sized {
     ) -> impl Future<Output = Result<Self, Error>>;
 
     /// Creates a [`Self::Renderer`] for the [`Compositor`].
-    fn create_renderer(&self) -> Self::Renderer;
+    fn create_renderer(&self, settings: renderer::Settings) -> Self::Renderer;
 
     /// Crates a new [`Surface`] for the given window.
     ///
@@ -61,11 +64,27 @@ pub trait Compositor: Sized {
     fn information(&self) -> Information;
 
     /// Loads a font from its bytes.
-    fn load_font(&mut self, font: Cow<'static, [u8]>) {
+    fn load_font(&mut self, font: Cow<'static, [u8]>) -> Result<(), font::Error> {
         crate::text::font_system()
             .write()
             .expect("Write to font system")
             .load_font(font);
+
+        // TODO: Error handling
+        Ok(())
+    }
+
+    /// Lists all the available font families.
+    fn list_fonts(&mut self) -> Result<Vec<font::Family>, font::Error> {
+        use std::collections::BTreeSet;
+
+        let font_system = crate::text::font_system()
+            .read()
+            .expect("Read from font system");
+
+        let families = BTreeSet::from_iter(font_system.families());
+
+        Ok(families.into_iter().map(font::Family::name).collect())
     }
 
     /// Presents the [`Renderer`] primitives to the next frame of the given [`Surface`].
@@ -91,6 +110,38 @@ pub trait Compositor: Sized {
         viewport: &Viewport,
         background_color: Color,
     ) -> Vec<u8>;
+}
+
+/// The settings of a [`Compositor`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Settings {
+    /// The antialiasing strategy that will be used for triangle primitives.
+    ///
+    /// By default, it is `None`.
+    pub antialiasing: Option<Antialiasing>,
+
+    /// Whether or not to synchronize frames.
+    ///
+    /// By default, it is `true`.
+    pub vsync: bool,
+}
+
+impl ::core::default::Default for Settings {
+    fn default() -> Settings {
+        Settings {
+            antialiasing: None,
+            vsync: true,
+        }
+    }
+}
+
+impl From<&core::Settings> for Settings {
+    fn from(settings: &core::Settings) -> Self {
+        Self {
+            antialiasing: settings.antialiasing.then_some(Antialiasing::MSAAx4),
+            vsync: settings.vsync,
+        }
+    }
 }
 
 /// A window that can be used in a [`Compositor`].
@@ -159,7 +210,7 @@ impl Compositor for () {
         Ok(())
     }
 
-    fn create_renderer(&self) -> Self::Renderer {}
+    fn create_renderer(&self, _settings: renderer::Settings) -> Self::Renderer {}
 
     fn create_surface<W: Window + Clone>(
         &mut self,
@@ -171,7 +222,13 @@ impl Compositor for () {
 
     fn configure_surface(&mut self, _surface: &mut Self::Surface, _width: u32, _height: u32) {}
 
-    fn load_font(&mut self, _font: Cow<'static, [u8]>) {}
+    fn load_font(&mut self, _font: Cow<'static, [u8]>) -> Result<(), font::Error> {
+        Ok(())
+    }
+
+    fn list_fonts(&mut self) -> Result<Vec<font::Family>, font::Error> {
+        Ok(Vec::new())
+    }
 
     fn information(&self) -> Information {
         Information {

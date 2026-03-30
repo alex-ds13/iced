@@ -90,11 +90,7 @@ impl<P: Program + 'static> Emulator<P> {
         let executor = P::Executor::new().expect("Create emulator executor");
 
         let renderer = executor
-            .block_on(P::Renderer::new(
-                settings.default_font,
-                settings.default_text_size,
-                None,
-            ))
+            .block_on(P::Renderer::new(renderer::Settings::from(&settings), None))
             .expect("Create emulator renderer");
 
         let runtime = Runtime::new(executor, sender);
@@ -171,9 +167,6 @@ impl<P: Program + 'static> Emulator<P> {
             Action_::Runtime(action) => match action {
                 runtime::Action::Output(message) => {
                     self.update(program, message);
-                }
-                runtime::Action::LoadFont { .. } => {
-                    // TODO
                 }
                 runtime::Action::Widget(operation) => {
                     let mut user_interface = UserInterface::build(
@@ -254,6 +247,10 @@ impl<P: Program + 'static> Emulator<P> {
                     // TODO
                     dbg!(action);
                 }
+                runtime::Action::Font(action) => {
+                    // TODO
+                    dbg!(action);
+                }
                 runtime::Action::Image(action) => {
                     // TODO
                     dbg!(action);
@@ -281,7 +278,7 @@ impl<P: Program + 'static> Emulator<P> {
     /// produced by the [`Emulator`].
     ///
     /// Otherwise, an [`Event::Failed`] will be triggered.
-    pub fn run(&mut self, program: &P, instruction: Instruction) {
+    pub fn run(&mut self, program: &P, instruction: &Instruction) {
         let mut user_interface = UserInterface::build(
             program.view(&self.state, self.window),
             self.size,
@@ -291,7 +288,7 @@ impl<P: Program + 'static> Emulator<P> {
 
         let mut messages = Vec::new();
 
-        match &instruction {
+        match instruction {
             Instruction::Interact(interaction) => {
                 let Some(events) = interaction.events(|target| match target {
                     instruction::Target::Id(id) => {
@@ -330,7 +327,7 @@ impl<P: Program + 'static> Emulator<P> {
                     }
                     instruction::Target::Point(position) => Some(*position),
                 }) else {
-                    self.runtime.send(Event::Failed(instruction));
+                    self.runtime.send(Event::Failed(instruction.clone()));
                     self.cache = Some(user_interface.into_cache());
                     return;
                 };
@@ -373,7 +370,7 @@ impl<P: Program + 'static> Emulator<P> {
                             self.runtime.send(Event::Ready);
                         }
                         _ => {
-                            self.runtime.send(Event::Failed(instruction));
+                            self.runtime.send(Event::Failed(instruction.clone()));
                         }
                     }
 

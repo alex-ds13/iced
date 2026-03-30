@@ -378,7 +378,7 @@ impl Scrollbar {
 /// on a given axis.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Anchor {
-    /// Scroller is anchoer to the start of the [`Viewport`].
+    /// Scroller is anchored to the start of the [`Viewport`].
     #[default]
     Start,
     /// Content is aligned to the end of the [`Viewport`].
@@ -1354,6 +1354,7 @@ where
                 align_y: alignment::Vertical::Center,
                 shaping: text::Shaping::Basic,
                 wrapping: text::Wrapping::None,
+                ellipsis: text::Ellipsis::None,
                 hint_factor: None,
             };
 
@@ -2137,7 +2138,7 @@ impl Catalog for Theme {
 
 /// The default style of a [`Scrollable`].
 pub fn default(theme: &Theme, status: Status) -> Style {
-    let palette = theme.extended_palette();
+    let palette = theme.palette();
 
     let scrollbar = Rail {
         background: Some(palette.background.weak.color.into()),
