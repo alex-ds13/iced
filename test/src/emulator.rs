@@ -2,6 +2,7 @@
 use crate::core;
 use crate::core::mouse;
 use crate::core::renderer;
+use crate::core::shell;
 use crate::core::time::Instant;
 use crate::core::widget;
 use crate::core::window;
@@ -208,35 +209,23 @@ impl<P: Program + 'static> Emulator<P> {
                         window::Action::GetOldest(sender) | window::Action::GetLatest(sender) => {
                             let _ = sender.send(Some(self.window));
                         }
-                        window::Action::GetSize(id, sender) => {
-                            if id == self.window {
-                                let _ = sender.send(self.size);
-                            }
+                        window::Action::GetSize(id, sender) if id == self.window => {
+                            let _ = sender.send(self.size);
                         }
-                        window::Action::GetMaximized(id, sender) => {
-                            if id == self.window {
-                                let _ = sender.send(false);
-                            }
+                        window::Action::GetMaximized(id, sender) if id == self.window => {
+                            let _ = sender.send(false);
                         }
-                        window::Action::GetMinimized(id, sender) => {
-                            if id == self.window {
-                                let _ = sender.send(None);
-                            }
+                        window::Action::GetMinimized(id, sender) if id == self.window => {
+                            let _ = sender.send(None);
                         }
-                        window::Action::GetPosition(id, sender) => {
-                            if id == self.window {
-                                let _ = sender.send(Some(Point::ORIGIN));
-                            }
+                        window::Action::GetPosition(id, sender) if id == self.window => {
+                            let _ = sender.send(Some(Point::ORIGIN));
                         }
-                        window::Action::GetScaleFactor(id, sender) => {
-                            if id == self.window {
-                                let _ = sender.send(1.0);
-                            }
+                        window::Action::GetScaleFactor(id, sender) if id == self.window => {
+                            let _ = sender.send(1.0);
                         }
-                        window::Action::GetMode(id, sender) => {
-                            if id == self.window {
-                                let _ = sender.send(core::window::Mode::Windowed);
-                            }
+                        window::Action::GetMode(id, sender) if id == self.window => {
+                            let _ = sender.send(core::window::Mode::Windowed);
                         }
                         _ => {
                             // Ignored
@@ -255,7 +244,11 @@ impl<P: Program + 'static> Emulator<P> {
                     // TODO
                     dbg!(action);
                 }
-                iced_runtime::Action::Event { window, event } => {
+                runtime::Action::Backend(action) => {
+                    // TODO
+                    dbg!(action);
+                }
+                runtime::Action::Event { window, event } => {
                     // TODO
                     dbg!(window, event);
                 }
@@ -338,8 +331,14 @@ impl<P: Program + 'static> Emulator<P> {
                     }
                 }
 
-                let (_state, _status) =
-                    user_interface.update(&events, self.cursor, &mut self.renderer, &mut messages);
+                let (_state, _status) = user_interface.update(
+                    &window::Headless,
+                    &shell::Waker::noop(),
+                    &events,
+                    self.cursor,
+                    &mut self.renderer,
+                    &mut messages,
+                );
 
                 self.cache = Some(user_interface.into_cache());
 
@@ -462,6 +461,8 @@ impl<P: Program + 'static> Emulator<P> {
 
         // TODO: Nested redraws!
         let _ = user_interface.update(
+            &window::Headless,
+            &shell::Waker::noop(),
             &[core::Event::Window(window::Event::RedrawRequested(
                 Instant::now(),
             ))],
@@ -493,6 +494,11 @@ impl<P: Program + 'static> Emulator<P> {
             size: physical_size,
             scale_factor,
         }
+    }
+
+    /// Returns a reference to the state of the [`Emulator`].
+    pub fn state(&self) -> &P::State {
+        &self.state
     }
 
     /// Turns the [`Emulator`] into its internal state.

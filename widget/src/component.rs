@@ -90,7 +90,7 @@ pub trait Component<'a, Message, Theme = crate::Theme, Renderer = crate::Rendere
     /// detect and react to changes in the [`Component`].
     ///
     /// By default, it does nothing.
-    fn diff(&self, _state: &mut Self::State) {}
+    fn diff(&mut self, _state: &mut Self::State) {}
 
     /// Run the provided [`widget::Operation`] on the [`Component`].
     ///
@@ -103,16 +103,13 @@ pub trait Component<'a, Message, Theme = crate::Theme, Renderer = crate::Rendere
     ) {
     }
 
-    /// Returns a [`Size`] hint for laying out the [`Component`].
+    /// Returns the [`Size`] of the [`Component`].
     ///
-    /// This hint may be used by some widget containers to adjust their sizing strategy
-    /// during construction.
-    ///
-    /// By default, it returns a [`Size`] with both dimensions set to [`Length::Shrink`].
-    fn size_hint(&self) -> Size<Length> {
+    /// By default, it returns a [`Size`] with both dimensions set to [`Length::Fit`].
+    fn size(&self) -> Size<Length> {
         Size {
-            width: Length::Shrink,
-            height: Length::Shrink,
+            width: Length::Fit,
+            height: Length::Fit,
         }
     }
 }
@@ -129,11 +126,12 @@ where
     Theme: 'a,
     Renderer: core::Renderer + 'a,
 {
-    let size_hint = component.size_hint();
-
     Element::new(Instance {
         component,
-        size_hint,
+        size: Size {
+            width: Length::Fit,
+            height: Length::Fit,
+        },
         view: crate::space().into(),
         limits: layout::Limits::new(Size::ZERO, Size::INFINITE),
         layout: layout::Node::new(Size::ZERO),
@@ -150,7 +148,7 @@ where
     view: Element<'a, C::Event, Theme, Renderer>,
     limits: layout::Limits,
     layout: layout::Node,
-    size_hint: Size<Length>,
+    size: Size<Length>,
     is_outdated: bool,
     has_overlay: bool,
 }
@@ -177,14 +175,14 @@ where
         })
     }
 
-    fn diff(&self, tree: &mut Tree) {
+    fn diff(&mut self, tree: &mut Tree) {
         let internal = tree.state.downcast_mut::<Internal<C::State, C::Event>>();
 
         self.component.diff(&mut internal.state);
     }
 
     fn size(&self) -> Size<Length> {
-        self.size_hint
+        self.size
     }
 
     fn layout(
@@ -197,7 +195,7 @@ where
 
         if self.is_outdated {
             self.view = self.component.view(&internal.state);
-            tree.diff_children(&[&self.view]);
+            tree.diff_children(&mut [&mut self.view]);
 
             self.is_outdated = false;
         }
@@ -240,7 +238,7 @@ where
         internal.events.extend(publish);
 
         if !shell.is_event_captured() {
-            let mut local_shell = Shell::new(&mut internal.events);
+            let mut local_shell = shell.local(&mut internal.events);
 
             self.view.as_widget_mut().update(
                 &mut tree.children[0],
@@ -256,7 +254,7 @@ where
                 shell.capture_event();
             }
 
-            if local_shell.is_layout_invalid() {
+            if local_shell.is_layout_invalid().is_some() {
                 shell.invalidate_layout();
             }
 
@@ -280,7 +278,7 @@ where
         }
 
         self.view = self.component.view(&internal.state);
-        tree.diff_children(&[&self.view]);
+        tree.diff_children(&mut [&mut self.view]);
 
         let previous_size = self.layout.size();
         self.layout =
@@ -288,7 +286,7 @@ where
                 .as_widget_mut()
                 .layout(&mut tree.children[0], renderer, &self.limits);
 
-        let new_size_hint = self.component.size_hint();
+        let new_size = self.component.size();
 
         // We must invalidate application layout in 3 instances:
         //
@@ -302,11 +300,10 @@ where
         // 3. The overlay status of the component changes. The
         //    runtime will only call `overlay` again if the layout
         //    is invalidated.
-        if new_size_hint != self.size_hint {
-            self.size_hint = new_size_hint;
+        if new_size != self.size {
+            self.size = new_size;
             shell.invalidate_widgets();
-        } else if (self.size_hint.width == Length::Shrink
-            || self.size_hint.height == Length::Shrink)
+        } else if (self.size.width == Length::Shrink || self.size.height == Length::Shrink)
             && previous_size != self.layout.size()
         {
             shell.invalidate_layout();
@@ -334,7 +331,7 @@ where
         if let Event::Window(window::Event::RedrawRequested(_)) = event {
             let internal = tree.state.downcast_mut::<Internal<C::State, C::Event>>();
 
-            let mut local_shell = Shell::new(&mut internal.events);
+            let mut local_shell = shell.local(&mut internal.events);
 
             self.view.as_widget_mut().update(
                 &mut tree.children[0],
@@ -475,7 +472,7 @@ where
         renderer: &Renderer,
         shell: &mut Shell<'_, Message>,
     ) {
-        let mut local_shell = Shell::new(&mut self.internal.events);
+        let mut local_shell = shell.local(&mut self.internal.events);
 
         self.raw
             .as_overlay_mut()
@@ -485,7 +482,7 @@ where
             shell.capture_event();
         }
 
-        if local_shell.is_layout_invalid() {
+        if local_shell.is_layout_invalid().is_some() {
             shell.invalidate_layout();
         }
 
