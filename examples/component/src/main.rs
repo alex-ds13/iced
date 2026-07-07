@@ -35,7 +35,7 @@ impl Example {
 
 mod numeric_input {
     use iced::widget::{Component, button, component, row, text, text_input};
-    use iced::{Center, Element, Fill, Length, Renderer, Shrink, Size};
+    use iced::{Center, Element, Fill, Fit, Length, Renderer, Size};
 
     pub struct NumericInput<Message> {
         value: Option<i32>,
@@ -122,10 +122,10 @@ mod numeric_input {
             .into()
         }
 
-        fn size_hint(&self) -> Size<Length> {
+        fn size(&self) -> Size<Length> {
             Size {
                 width: Fill,
-                height: Shrink,
+                height: Fit,
             }
         }
     }
