@@ -302,7 +302,7 @@ where
         //    is invalidated.
         if new_size != self.size {
             self.size = new_size;
-            shell.invalidate_widgets();
+            shell.invalidate_layout();
         } else if (matches!(self.size.width, Length::Shrink | Length::Fit)
             || matches!(self.size.height, Length::Shrink | Length::Fit))
             && previous_size != self.layout.size()
