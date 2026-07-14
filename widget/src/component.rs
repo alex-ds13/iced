@@ -293,9 +293,9 @@ where
         // 1. The size hint of the component changes. Other widgets
         //    may change layout behavior.
         //
-        // 2. The size hint of the component is `Shrink` for any axis
-        //    and the component has changed size. The new size may
-        //    push other widgets around.
+        // 2. The size hint of the component is `Shrink` or `Fit` for
+        //    any axis and the component has changed size. The new size
+        //    may push other widgets around.
         //
         // 3. The overlay status of the component changes. The
         //    runtime will only call `overlay` again if the layout
@@ -303,7 +303,8 @@ where
         if new_size != self.size {
             self.size = new_size;
             shell.invalidate_widgets();
-        } else if (self.size.width == Length::Shrink || self.size.height == Length::Shrink)
+        } else if (matches!(self.size.width, Length::Shrink | Length::Fit)
+            || matches!(self.size.height, Length::Shrink | Length::Fit))
             && previous_size != self.layout.size()
         {
             shell.invalidate_layout();
