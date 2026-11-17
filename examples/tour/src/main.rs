@@ -198,15 +198,27 @@ impl Tour {
 
     fn welcome(&self) -> Column<Element<'_, Message>> {
         column![
-            "This is a simple tour meant to showcase a bunch of \
-        widgets that come bundled in Iced.",
-            "Iced is a cross-platform GUI library for Rust focused on \
-         simplicity and type-safety. It is heavily inspired by Elm.",
-            "It was originally born as part of Coffee, an opinionated \
-         2D game engine for Rust.",
-            "On native platforms, Iced provides by default a renderer \
+            text(
+                "This is a simple tour meant to showcase a bunch of \
+        widgets that come bundled in Iced."
+            )
+            .selectable(true),
+            text(
+                "Iced is a cross-platform GUI library for Rust focused on \
+         simplicity and type-safety. It is heavily inspired by Elm."
+            )
+            .selectable(true),
+            text(
+                "It was originally born as part of Coffee, an opinionated \
+         2D game engine for Rust."
+            )
+            .selectable(true),
+            text(
+                "On native platforms, Iced provides by default a renderer \
          built on top of wgpu, a graphics library supporting Vulkan, \
-         Metal, DX11, and DX12.",
+         Metal, DX11, and DX12."
+            )
+            .selectable(true),
             rich_text![
                 "Additionally, this tour can also run on WebAssembly ",
                 "by leveraging ",
@@ -217,9 +229,13 @@ impl Tour {
                     .link(Message::OpenTrunk),
                 "."
             ]
-            .on_link_click(std::convert::identity),
-            "You will need to interact with the UI in order to reach \
+            .on_link_click(std::convert::identity)
+            .selectable(true),
+            text(
+                "You will need to interact with the UI in order to reach \
          the end!"
+            )
+            .selectable(true)
         ]
     }
 
