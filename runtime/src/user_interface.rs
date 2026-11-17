@@ -33,6 +33,7 @@ pub struct UserInterface<'a, Message, Theme, Renderer> {
     bounds: Size,
     last_click: Option<mouse::Click>,
     selection: Option<(Point, Point)>,
+    modifiers: keyboard::Modifiers,
 }
 
 impl<'a, Message, Theme, Renderer> UserInterface<'a, Message, Theme, Renderer>
@@ -106,6 +107,7 @@ where
             mut state,
             last_click,
             selection,
+            modifiers,
         } = cache;
 
         let mut root = root._boxed();
@@ -124,6 +126,7 @@ where
             bounds,
             last_click,
             selection,
+            modifiers,
         }
     }
 
@@ -392,14 +395,28 @@ where
                     event::Status::Ignored,
                 ) => {
                     if let Some(position) = cursor.position() {
-                        self.last_click = Some(mouse::Click::new(
-                            position,
-                            mouse::Button::Left,
-                            self.last_click,
-                        ));
+                        // Shift+click extends from the last plain click and keeps its
+                        // kind, so word and line selections keep their granularity.
+                        let start = match self.last_click {
+                            Some(click) if self.modifiers.shift() => click.position(),
+                            _ => {
+                                let click = mouse::Click::new(
+                                    position,
+                                    mouse::Button::Left,
+                                    self.last_click,
+                                );
 
-                        self.selection = Some((position, Point::ORIGIN));
+                                self.last_click = Some(click);
+
+                                position
+                            }
+                        };
+
+                        self.selection = Some((start, Point::ORIGIN));
                     }
+                }
+                (Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)), _) => {
+                    self.modifiers = *modifiers;
                 }
                 (Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)), _) => {
                     self.selection = None;
@@ -638,6 +655,7 @@ where
                 state: self.state,
                 last_click: self.last_click,
                 selection: self.selection,
+                modifiers: self.modifiers,
             },
             renderer,
         )
@@ -650,6 +668,7 @@ where
             state: self.state,
             last_click: self.last_click,
             selection: self.selection,
+            modifiers: self.modifiers,
         }
     }
 }
@@ -660,6 +679,7 @@ pub struct Cache {
     state: widget::Tree,
     last_click: Option<mouse::Click>,
     selection: Option<(Point, Point)>,
+    modifiers: keyboard::Modifiers,
 }
 
 impl Cache {
@@ -672,6 +692,7 @@ impl Cache {
             state: widget::Tree::empty(),
             last_click: None,
             selection: None,
+            modifiers: keyboard::Modifiers::default(),
         }
     }
 }
