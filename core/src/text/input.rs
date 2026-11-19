@@ -149,6 +149,7 @@ impl<R: text::Renderer> Input<R> {
                         editor::Action::Edit(editor::Edit::Enter)
                         | editor::Action::Move(editor::Motion::Up)
                         | editor::Action::Move(editor::Motion::Down)
+                        | editor::Action::Scroll { .. }
                             if !is_multiline =>
                         {
                             return None;
