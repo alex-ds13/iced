@@ -1,10 +1,15 @@
-//! Tests for how `text_input` and `text_editor` handle the scroll wheel.
+//! Tests for how `text_input` and `text_editor` handle the scroll wheel and
+//! programmatic focus.
 //!
 //! A single-line `text_input` cannot scroll, so it must leave wheel events
 //! uncaptured for an enclosing `scrollable`. A multi-line `text_editor` with
 //! bounded height scrolls its own content and keeps capturing them.
+//!
+//! Focusing a single-line `text_input` through an operation puts the caret
+//! at the end of its value, while a click keeps the caret where it landed.
 use iced_test::Simulator;
 use iced_widget::core::mouse::ScrollDelta;
+use iced_widget::core::widget::{Id, operation};
 use iced_widget::core::{Point, Widget, event};
 use iced_widget::scrollable::Scroll;
 use iced_widget::{Renderer, Theme, column, container, scrollable, space, text_editor, text_input};
@@ -18,9 +23,9 @@ enum Message {
 
 const WHEEL_DOWN: ScrollDelta = ScrollDelta::Lines { x: 0.0, y: -1.0 };
 
-fn simulate<'a>(
-    element: impl Widget<Message, Theme, Renderer> + 'a,
-) -> Simulator<'a, Message, Theme, Renderer> {
+fn simulate<'a, M: 'a>(
+    element: impl Widget<M, Theme, Renderer> + 'a,
+) -> Simulator<'a, M, Theme, Renderer> {
     Simulator::new(element)
 }
 
@@ -86,4 +91,83 @@ fn text_editor_captures_wheel() {
     simulator.point_at(Point::new(10.0, 10.0));
 
     assert_eq!(simulator.scroll(WHEEL_DOWN), event::Status::Captured);
+}
+
+fn typed(simulator: Simulator<'_, String, Theme, Renderer>) -> Option<String> {
+    simulator.into_messages().last()
+}
+
+#[test]
+fn text_input_focus_operation_moves_caret_to_end() {
+    let mut simulator = simulate(
+        text_input("Placeholder", "Hello")
+            .id("name")
+            .on_input(|value| value),
+    );
+
+    simulator.operate(&mut operation::text_input::move_cursor_to_front(Id::new(
+        "name",
+    )));
+    simulator.operate(&mut operation::focusable::focus(Id::new("name")));
+    let _ = simulator.typewrite("!");
+
+    assert_eq!(typed(simulator).as_deref(), Some("Hello!"));
+}
+
+#[test]
+fn text_input_focus_operation_moves_caret_to_end_when_already_focused() {
+    let mut simulator = simulate(
+        text_input("Placeholder", "Hello")
+            .id("name")
+            .on_input(|value| value),
+    );
+
+    simulator.operate(&mut operation::focusable::focus(Id::new("name")));
+    simulator.operate(&mut operation::text_input::move_cursor_to_front(Id::new(
+        "name",
+    )));
+    simulator.operate(&mut operation::focusable::focus(Id::new("name")));
+    let _ = simulator.typewrite("!");
+
+    assert_eq!(typed(simulator).as_deref(), Some("Hello!"));
+}
+
+#[test]
+fn text_input_click_keeps_caret_where_clicked() {
+    let mut simulator = simulate(
+        text_input("Placeholder", "Hello")
+            .id("name")
+            .on_input(|value| value),
+    );
+
+    // Just inside the default padding, before the first character.
+    simulator.point_at(Point::new(5.5, 10.0));
+    let _ = simulator.simulate(iced_test::simulator::click());
+    let _ = simulator.typewrite("!");
+
+    assert_eq!(typed(simulator).as_deref(), Some("!Hello"));
+}
+
+#[test]
+fn text_editor_focus_operation_keeps_caret() {
+    let mut content = text_editor::Content::with_text("Hello");
+
+    let actions: Vec<text_editor::Action> = {
+        let mut simulator = simulate(
+            text_editor(&content)
+                .id("description")
+                .on_action(|action| action),
+        );
+
+        simulator.operate(&mut operation::focusable::focus(Id::new("description")));
+        let _ = simulator.typewrite("!");
+
+        simulator.into_messages().collect()
+    };
+
+    for action in actions {
+        content.perform(action);
+    }
+
+    assert_eq!(content.text(), "!Hello");
 }

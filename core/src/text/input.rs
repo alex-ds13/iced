@@ -360,6 +360,12 @@ impl<R: text::Renderer> Focusable for Input<R> {
 
     fn focus(&mut self) {
         self.state.focus();
+
+        // Clicks focus through `editor::State::update` and place the caret
+        // themselves, so this only affects programmatic focus.
+        if self.multiline.is_none() {
+            self.editor.move_cursor_to_end();
+        }
     }
 
     fn unfocus(&mut self) {
